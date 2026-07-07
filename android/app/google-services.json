@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1008183283303",
+    "project_id": "yuploaded-998bb",
+    "storage_bucket": "yuploaded-998bb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1008183283303:android:58c3546b761de5ad060ec2",
+        "android_client_info": {
+          "package_name": "com.yuploaded.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBe9M238Ek7e49uN7dyM8nxfsTr2B9uwkk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
