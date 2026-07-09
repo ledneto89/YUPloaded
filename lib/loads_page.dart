@@ -29,17 +29,12 @@ static const Color danger = Color(0xFFEF4444);
 
 Widget _buildBottomNav(BuildContext context) {
 return Container(
-decoration: BoxDecoration(
-color: const Color(0xFF0D1E30),
-border: Border(top: BorderSide(color: border)),
-),
+decoration: BoxDecoration(color: const Color(0xFF0D1E30), border: Border(top: BorderSide(color: border))),
 child: Row(
 children: [
-_buildNavItem(Icons.home, 'HOME', false,
-() => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()))),
+_buildNavItem(Icons.home, 'HOME', false, () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()))),
 _buildNavItem(Icons.local_shipping, 'LOADS', true, () {}),
-_buildNavItem(Icons.person, 'PROFILE', false,
-() => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()))),
+_buildNavItem(Icons.person, 'PROFILE', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()))),
 ],
 ),
 );
@@ -80,7 +75,16 @@ crossAxisAlignment: CrossAxisAlignment.start,
 children: [
 Padding(
 padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-child: Text('Loads', style: GoogleFonts.barlowCondensed(fontSize: 32, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
+child: Row(
+children: [
+GestureDetector(
+onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage())),
+child: Container(width: 36, height: 36, decoration: BoxDecoration(color: orange, shape: BoxShape.circle), child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 22))),
+),
+const SizedBox(width: 12),
+Text('Loads', style: GoogleFonts.barlowCondensed(fontSize: 32, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
+],
+),
 ),
 Padding(
 padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
@@ -110,6 +114,12 @@ Text('Upload docs and generate invoice', style: GoogleFonts.barlow(fontSize: 11,
 ),
 const SizedBox(width: 12),
 Expanded(
+child: GestureDetector(
+onTap: () {
+setState(() => _statusFilter = 'All');
+_searchController.clear();
+setState(() => _searchText = '');
+},
 child: Container(
 padding: const EdgeInsets.all(24),
 decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: border)),
@@ -124,6 +134,7 @@ Text('Browse your load history', style: GoogleFonts.barlow(fontSize: 11, color: 
 ),
 ),
 ),
+),
 ],
 ),
 ),
@@ -135,9 +146,15 @@ controller: _searchController,
 onChanged: (val) => setState(() => _searchText = val.toLowerCase()),
 style: GoogleFonts.barlow(fontSize: 14, color: textPrimary),
 decoration: InputDecoration(
-hintText: 'Search by load number, state, broker...',
+hintText: 'Search load number, state, broker...',
 hintStyle: GoogleFonts.barlow(fontSize: 13, color: textMuted),
 prefixIcon: const Icon(Icons.search, color: Color(0xFF5A7A9A), size: 20),
+suffixIcon: _searchText.isNotEmpty
+? GestureDetector(
+onTap: () { _searchController.clear(); setState(() => _searchText = ''); },
+child: const Icon(Icons.clear, color: Color(0xFF5A7A9A), size: 18),
+)
+: null,
 filled: true,
 fillColor: surface,
 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -159,11 +176,7 @@ onTap: () => setState(() => _statusFilter = filter),
 child: Container(
 margin: const EdgeInsets.only(right: 8),
 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-decoration: BoxDecoration(
-color: isActive ? orange : surface,
-borderRadius: BorderRadius.circular(20),
-border: isActive ? null : Border.all(color: border),
-),
+decoration: BoxDecoration(color: isActive ? orange : surface, borderRadius: BorderRadius.circular(20), border: isActive ? null : Border.all(color: border)),
 child: Text(filter, style: GoogleFonts.barlowCondensed(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1, color: isActive ? background : textMuted)),
 ),
 );
@@ -189,7 +202,16 @@ return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularP
 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
 return Padding(
 padding: const EdgeInsets.all(24),
-child: Center(child: Text('No loads yet. Go get some miles.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted))),
+child: Center(child: Column(children: [
+const Icon(Icons.local_shipping_outlined, color: Color(0xFF5A7A9A), size: 48),
+const SizedBox(height: 12),
+Text('No loads yet. Go get some miles.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted)),
+const SizedBox(height: 8),
+GestureDetector(
+onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewLoadPage())),
+child: Text('Start your first load', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: orange)),
+),
+])),
 );
 }
 final docs = snapshot.data!.docs.where((doc) {
@@ -215,22 +237,13 @@ final data = doc.data() as Map<String, dynamic>;
 final loadNum = data['loadNumber'] ?? 'YU-0000';
 final pickup = data['pickupState'] ?? '';
 final delivery = data['deliveryState'] ?? '';
-final pickupStr = pickup.toString();
-final deliveryStr = delivery.toString();
-final route = pickupStr.isNotEmpty && deliveryStr.isNotEmpty
-? pickupStr + ' to ' + deliveryStr
-: 'Route pending';
+final route = pickup.isNotEmpty && delivery.isNotEmpty ? pickup + ' to ' + delivery : 'Route pending';
 final rate = (data['rate'] ?? 0.0).toDouble();
-final rateStr = 'USD ' + rate.toStringAsFixed(0);
 final status = data['status'] ?? 'invoiced';
 Color statusColor;
-if (status == 'paid') {
-statusColor = success;
-} else if (status == 'invoiced') {
-statusColor = info;
-} else {
-statusColor = orange;
-}
+if (status == 'paid') statusColor = success;
+else if (status == 'invoiced') statusColor = info;
+else statusColor = orange;
 return Dismissible(
 key: Key(doc.id),
 direction: DismissDirection.endToStart,
@@ -285,7 +298,7 @@ Text('Swipe left to delete', style: GoogleFonts.barlow(fontSize: 10, color: text
 Column(
 crossAxisAlignment: CrossAxisAlignment.end,
 children: [
-Text(rateStr, style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
+Text('USD ' + rate.toStringAsFixed(0), style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
 const SizedBox(height: 4),
 Container(
 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

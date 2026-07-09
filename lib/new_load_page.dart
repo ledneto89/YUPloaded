@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'quick_details_page.dart';
 
@@ -36,20 +37,18 @@ static const Color success = Color(0xFF4ADE80);
 
 bool get _allDone => _rateDone && _bolDone && _freightDone && _podDone;
 
-Future<String?> _uploadPhoto(String folder) async {
+Future<String?> _uploadSinglePhoto(String folder) async {
 try {
 final picker = ImagePicker();
-final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
 if (picked == null) return null;
-
 setState(() => _isUploading = true);
-
-final file = File(picked.path);
-final fileName = folder + '_' + DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
-final ref = FirebaseStorage.instance.ref().child('loads/' + folder + '/' + fileName);
-await ref.putFile(file);
+final user = FirebaseAuth.instance.currentUser;
+final uid = user?.uid ?? 'unknown';
+final fileName = uid + '_' + folder + '_' + DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
+final ref = FirebaseStorage.instance.ref().child('loads/' + uid + '/' + folder + '/' + fileName);
+await ref.putFile(File(picked.path));
 final url = await ref.getDownloadURL();
-
 setState(() => _isUploading = false);
 return url;
 } catch (e) {
@@ -58,43 +57,27 @@ return null;
 }
 }
 
-Future<void> _pickRateCon() async {
-final url = await _uploadPhoto('ratcon');
-if (url != null) {
-setState(() {
-_rateConUrl = url;
-_rateDone = true;
-});
-}
-}
-
-Future<void> _pickBol() async {
-final url = await _uploadPhoto('bol');
-if (url != null) {
-setState(() {
-_bolUrl = url;
-_bolDone = true;
-});
-}
-}
-
-Future<void> _pickFreight() async {
-final url = await _uploadPhoto('freight');
-if (url != null) {
-setState(() {
+Future<void> _uploadMultiplePhotos() async {
+try {
+final picker = ImagePicker();
+final picked = await picker.pickMultiImage(imageQuality: 70);
+if (picked.isEmpty) return;
+setState(() => _isUploading = true);
+final user = FirebaseAuth.instance.currentUser;
+final uid = user?.uid ?? 'unknown';
+for (final img in picked) {
+final fileName = uid + '_freight_' + DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
+final ref = FirebaseStorage.instance.ref().child('loads/' + uid + '/freight/' + fileName);
+await ref.putFile(File(img.path));
+final url = await ref.getDownloadURL();
 _freightUrls.add(url);
+}
+setState(() {
+_isUploading = false;
 _freightDone = true;
 });
-}
-}
-
-Future<void> _pickPod() async {
-final url = await _uploadPhoto('pod');
-if (url != null) {
-setState(() {
-_podUrl = url;
-_podDone = true;
-});
+} catch (e) {
+setState(() => _isUploading = false);
 }
 }
 
@@ -111,7 +94,11 @@ child: Row(
 children: [
 GestureDetector(
 onTap: () => Navigator.pop(context),
-child: Container(width: 34, height: 34, decoration: BoxDecoration(color: surface, shape: BoxShape.circle), child: const Center(child: Text('back', style: TextStyle(color: Colors.white, fontSize: 11)))),
+child: Container(
+width: 36, height: 36,
+decoration: BoxDecoration(color: orange, shape: BoxShape.circle),
+child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 22)),
+),
 ),
 const SizedBox(width: 12),
 Text('Upload Your Docs', style: GoogleFonts.barlowCondensed(fontSize: 24, fontWeight: FontWeight.w900, color: textPrimary)),
@@ -119,7 +106,7 @@ Text('Upload Your Docs', style: GoogleFonts.barlowCondensed(fontSize: 24, fontWe
 ),
 ),
 Padding(
-padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
 child: Row(
 children: [
 _buildProgress(_rateDone),
@@ -147,7 +134,7 @@ Text('Uploading...', style: GoogleFonts.barlow(fontSize: 12, color: textMuted)),
 ),
 ),
 Padding(
-padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
 child: Text('Take your photos first then upload everything here', style: GoogleFonts.barlow(fontSize: 11, color: textMuted), textAlign: TextAlign.center),
 ),
 Expanded(
@@ -155,6 +142,8 @@ child: SingleChildScrollView(
 padding: const EdgeInsets.symmetric(horizontal: 24),
 child: Column(
 children: [
+
+// RATE CON
 Container(
 decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: _rateDone ? success : orange, width: 1.5)),
 child: Column(
@@ -174,61 +163,127 @@ Text(_rateDone ? 'Yupped' : 'Type it or upload it', style: GoogleFonts.barlow(fo
 ],
 ),
 ),
-if (_rateDone) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, color: success))),
+if (_rateDone) _yuppedBadge(),
 ],
 ),
 ),
 if (!_rateDone) ...[
 Row(
 children: [
-Expanded(child: GestureDetector(onTap: () => setState(() => _rateTab = 0), child: Container(padding: const EdgeInsets.symmetric(vertical: 12), color: _rateTab == 0 ? orange : const Color(0xFF0D1E30), child: Column(children: [const Icon(Icons.edit, size: 18, color: Colors.white), const SizedBox(height: 4), Text('TYPE AMOUNT', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w800, color: _rateTab == 0 ? background : textPrimary))])))),
-Expanded(child: GestureDetector(onTap: () => setState(() => _rateTab = 1), child: Container(padding: const EdgeInsets.symmetric(vertical: 12), color: _rateTab == 1 ? orange : const Color(0xFF0D1E30), child: Column(children: [const Icon(Icons.photo_library, size: 18, color: Colors.white), const SizedBox(height: 4), Text('UPLOAD PHOTO', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w800, color: _rateTab == 1 ? background : textPrimary))])))),
+Expanded(child: GestureDetector(onTap: () => setState(() => _rateTab = 0), child: Container(padding: const EdgeInsets.symmetric(vertical: 10), color: _rateTab == 0 ? orange : const Color(0xFF0D1E30), child: Center(child: Text('TYPE AMOUNT', style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, color: _rateTab == 0 ? background : textPrimary)))))),
+Expanded(child: GestureDetector(onTap: () => setState(() => _rateTab = 1), child: Container(padding: const EdgeInsets.symmetric(vertical: 10), color: _rateTab == 1 ? orange : const Color(0xFF0D1E30), child: Center(child: Text('UPLOAD PHOTO', style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, color: _rateTab == 1 ? background : textPrimary)))))),
 ],
 ),
 Padding(
 padding: const EdgeInsets.all(12),
-child: Column(
-crossAxisAlignment: CrossAxisAlignment.start,
-children: [
-if (_rateTab == 0) ...[
-Text('AGREED RATE', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
-const SizedBox(height: 6),
+child: _rateTab == 0
+? Column(children: [
 TextField(
 controller: _rateController,
 keyboardType: TextInputType.number,
 style: GoogleFonts.barlowCondensed(fontSize: 28, fontWeight: FontWeight.w900, color: orange),
 decoration: InputDecoration(hintText: '0.00', hintStyle: GoogleFonts.barlowCondensed(fontSize: 28, color: const Color(0xFF2A4060)), filled: true, fillColor: background, contentPadding: const EdgeInsets.all(14), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5))),
 ),
-const SizedBox(height: 12),
-GestureDetector(
-onTap: () => setState(() => _rateDone = true),
-child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(10)), child: Center(child: Text('YUP - CONFIRM RATE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: background, letterSpacing: 2)))),
-),
-] else ...[
-GestureDetector(
-onTap: _pickRateCon,
-child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(10)), child: Center(child: Text('YUP - SELECT FROM PHOTOS', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: background, letterSpacing: 1)))),
-),
-const SizedBox(height: 8),
-GestureDetector(
-onTap: () => setState(() => _rateDone = true),
-child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(border: Border.all(color: border, width: 2), borderRadius: BorderRadius.circular(10)), child: Center(child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: textMuted, letterSpacing: 2)))),
-),
-],
-],
-),
-),
-],
-],
-),
-),
 const SizedBox(height: 10),
-_buildUploadSlot(Icons.article, 'BILL OF LADING', 'Select from your camera roll', _bolDone, _pickBol, () => setState(() => _bolDone = true)),
+_yupNopeRow(() => setState(() => _rateDone = true), () => setState(() => _rateDone = true)),
+])
+: _yupNopeRow(() async {
+final url = await _uploadSinglePhoto('ratcon');
+if (url != null) setState(() { _rateConUrl = url; _rateDone = true; });
+}, () => setState(() => _rateDone = true)),
+),
+],
+],
+),
+),
+
 const SizedBox(height: 10),
-_buildUploadSlot(Icons.image, 'FREIGHT PHOTOS', 'Select from your camera roll', _freightDone, _pickFreight, () => setState(() => _freightDone = true)),
+
+// BOL
+_buildDocSlot(
+icon: Icons.article,
+title: 'BILL OF LADING',
+subtitle: 'Select from your camera roll',
+done: _bolDone,
+onYup: () async {
+final url = await _uploadSinglePhoto('bol');
+if (url != null) setState(() { _bolUrl = url; _bolDone = true; });
+},
+onNope: () => setState(() => _bolDone = true),
+),
+
 const SizedBox(height: 10),
-_buildUploadSlot(Icons.check_circle, 'PROOF OF DELIVERY', 'Select from your camera roll', _podDone, _pickPod, () => setState(() => _podDone = true)),
+
+// FREIGHT PHOTOS - MULTI UPLOAD
+Container(
+padding: const EdgeInsets.all(14),
+decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: _freightDone ? success : border, width: 1.5)),
+child: Column(
+children: [
+Row(
+children: [
+const Icon(Icons.photo_library, color: Color(0xFFF5921E), size: 20),
+const SizedBox(width: 12),
+Expanded(
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Text('FREIGHT PHOTOS', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: textPrimary)),
+Text(_freightDone ? _freightUrls.length.toString() + ' photo(s) uploaded' : 'Select multiple from camera roll', style: GoogleFonts.barlow(fontSize: 11, color: _freightDone ? success : textMuted)),
+],
+),
+),
+if (_freightDone) _yuppedBadge(),
+],
+),
+if (!_freightDone) ...[
+const SizedBox(height: 10),
+Row(
+children: [
+Expanded(
+child: GestureDetector(
+onTap: _uploadMultiplePhotos,
+child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(10)), child: Center(child: Text('YUP - SELECT PHOTOS', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w900, color: background, letterSpacing: 1)))),
+),
+),
+const SizedBox(width: 8),
+Expanded(
+child: GestureDetector(
+onTap: () => setState(() => _freightDone = true),
+child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(border: Border.all(color: border, width: 2), borderRadius: BorderRadius.circular(10)), child: Center(child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: textMuted, letterSpacing: 1)))),
+),
+),
+],
+),
+],
+if (_freightDone && _freightUrls.isNotEmpty) ...[
+const SizedBox(height: 10),
+GestureDetector(
+onTap: _uploadMultiplePhotos,
+child: Container(padding: const EdgeInsets.symmetric(vertical: 10), decoration: BoxDecoration(border: Border.all(color: orange, width: 1.5), borderRadius: BorderRadius.circular(10)), child: Center(child: Text('+ ADD MORE PHOTOS', style: GoogleFonts.barlowCondensed(fontSize: 13, fontWeight: FontWeight.w800, color: orange, letterSpacing: 1)))),
+),
+],
+],
+),
+),
+
+const SizedBox(height: 10),
+
+// POD
+_buildDocSlot(
+icon: Icons.check_circle,
+title: 'PROOF OF DELIVERY',
+subtitle: 'Select from your camera roll',
+done: _podDone,
+onYup: () async {
+final url = await _uploadSinglePhoto('pod');
+if (url != null) setState(() { _podUrl = url; _podDone = true; });
+},
+onNope: () => setState(() => _podDone = true),
+),
+
 const SizedBox(height: 16),
+
 if (_allDone)
 SizedBox(
 width: double.infinity,
@@ -239,6 +294,7 @@ style: ElevatedButton.styleFrom(backgroundColor: orange, shape: RoundedRectangle
 child: Text('NEXT - QUICK DETAILS', style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: background, letterSpacing: 2)),
 ),
 ),
+
 const SizedBox(height: 24),
 ],
 ),
@@ -254,7 +310,21 @@ Widget _buildProgress(bool done) {
 return Expanded(child: Container(height: 4, decoration: BoxDecoration(color: done ? orange : surface, borderRadius: BorderRadius.circular(2))));
 }
 
-Widget _buildUploadSlot(IconData icon, String title, String subtitle, bool done, VoidCallback onYup, VoidCallback onNope) {
+Widget _yuppedBadge() {
+return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, color: success)));
+}
+
+Widget _yupNopeRow(VoidCallback onYup, VoidCallback onNope) {
+return Row(
+children: [
+Expanded(child: GestureDetector(onTap: onYup, child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(10)), child: Center(child: Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: background, letterSpacing: 2)))))),
+const SizedBox(width: 8),
+Expanded(child: GestureDetector(onTap: onNope, child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(border: Border.all(color: border, width: 2), borderRadius: BorderRadius.circular(10)), child: Center(child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: textMuted, letterSpacing: 1)))))),
+],
+);
+}
+
+Widget _buildDocSlot({required IconData icon, required String title, required String subtitle, required bool done, required VoidCallback onYup, required VoidCallback onNope}) {
 return Container(
 padding: const EdgeInsets.all(14),
 decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: done ? success : border, width: 1.5)),
@@ -265,18 +335,12 @@ children: [
 Icon(icon, color: orange, size: 20),
 const SizedBox(width: 12),
 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: textPrimary)), Text(done ? 'Yupped' : subtitle, style: GoogleFonts.barlow(fontSize: 11, color: done ? success : textMuted))])),
-if (done) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, color: success))),
+if (done) _yuppedBadge(),
 ],
 ),
 if (!done) ...[
 const SizedBox(height: 10),
-Row(
-children: [
-Expanded(child: GestureDetector(onTap: onYup, child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(10)), child: Center(child: Text('YUP - SELECT PHOTO', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w900, color: background, letterSpacing: 1)))))),
-const SizedBox(width: 8),
-Expanded(child: GestureDetector(onTap: onNope, child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(border: Border.all(color: border, width: 2), borderRadius: BorderRadius.circular(10)), child: Center(child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: textMuted, letterSpacing: 1)))))),
-],
-),
+_yupNopeRow(onYup, onNope),
 ],
 ],
 ),
