@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSPhotoLibraryUsageDescription</key>
-    <string>YUPLOADED needs access to your photos to upload load documents and receipts.</string>
-    <key>NSCameraUsageDescription</key>
-    <string>YUPLOADED needs camera access to photograph your load documents.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -19,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>yuploaded</string>
+	<string>YUPloaded</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -30,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>YUPLOADED needs camera access to photograph your load documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>YUPLOADED needs access to your photos to upload load documents and receipts.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
