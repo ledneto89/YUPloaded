@@ -2,12 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import 'home_page.dart';
 import 'login_page.dart';
 import 'payment_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
 const ProfilePage({super.key});
+
+@override
+State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+bool _isUploadingPhoto = false;
 
 static const Color background = Color(0xFF0B1628);
 static const Color surface = Color(0xFF122035);
@@ -27,6 +37,54 @@ if (totalLoads >= 10) return 'Road Warrior';
 return 'Rookie';
 }
 
+Future<void> _uploadProfilePhoto(String uid) async {
+try {
+final picker = ImagePicker();
+final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+if (picked == null) return;
+setState(() => _isUploadingPhoto = true);
+final ref = FirebaseStorage.instance.ref().child('profiles/' + uid + '/avatar.jpg');
+await ref.putFile(File(picked.path));
+final url = await ref.getDownloadURL();
+await FirebaseFirestore.instance.collection('users').doc(uid).update({'photoUrl': url});
+setState(() => _isUploadingPhoto = false);
+} catch (e) {
+setState(() => _isUploadingPhoto = false);
+}
+}
+
+Future<void> _editField(BuildContext context, String field, String label, String currentValue, String uid) async {
+final controller = TextEditingController(text: currentValue);
+await showDialog(
+context: context,
+builder: (ctx) => AlertDialog(
+backgroundColor: surface,
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+title: Text('Update ' + label, style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w900, color: textPrimary)),
+content: TextField(
+controller: controller,
+style: GoogleFonts.barlow(fontSize: 14, color: textPrimary),
+decoration: InputDecoration(
+filled: true,
+fillColor: background,
+enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1C2E45))),
+focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF5921E))),
+),
+),
+actions: [
+TextButton(onPressed: () => Navigator.pop(ctx), child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: textMuted))),
+TextButton(
+onPressed: () async {
+await FirebaseFirestore.instance.collection('users').doc(uid).update({field: controller.text.trim()});
+if (ctx.mounted) Navigator.pop(ctx);
+},
+child: Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: orange)),
+),
+],
+),
+);
+}
+
 @override
 Widget build(BuildContext context) {
 final user = FirebaseAuth.instance.currentUser;
@@ -35,9 +93,7 @@ return Scaffold(
 backgroundColor: background,
 body: SafeArea(
 child: StreamBuilder<DocumentSnapshot>(
-stream: user != null
-? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots()
-: null,
+stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() : null,
 builder: (context, snapshot) {
 final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
 final firstName = userData['firstName'] ?? '';
@@ -50,6 +106,7 @@ final plan = userData['plan'] ?? 'FREE';
 final planPrice = userData['planPrice'] ?? '0';
 final totalLoads = (userData['totalLoads'] ?? 0) as int;
 final rank = _getRank(totalLoads);
+final photoUrl = userData['photoUrl'] ?? '';
 final initials = firstName.isNotEmpty && lastName.isNotEmpty
 ? firstName[0].toUpperCase() + lastName[0].toUpperCase()
 : firstName.isNotEmpty ? firstName[0].toUpperCase() : 'D';
@@ -59,35 +116,41 @@ padding: const EdgeInsets.all(24),
 child: Column(
 children: [
 
-// AVATAR + NAME
+// HEADER ROW WITH BACK BUTTON
 Row(
 children: [
 GestureDetector(
 onTap: () => Navigator.pop(context),
-child: Container(
-width: 34, height: 34,
-decoration: BoxDecoration(color: surface, shape: BoxShape.circle),
-child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 20)),
-),
+child: Container(width: 36, height: 36, decoration: BoxDecoration(color: orange, shape: BoxShape.circle), child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 22))),
 ),
 const SizedBox(width: 16),
-Stack(
+
+// AVATAR
+GestureDetector(
+onTap: user != null ? () => _uploadProfilePhoto(user.uid) : null,
+child: Stack(
 children: [
 Container(
-width: 56, height: 56,
+width: 60, height: 60,
 decoration: BoxDecoration(color: orange, shape: BoxShape.circle, border: Border.all(color: orange.withValues(alpha: 0.3), width: 3)),
-child: Center(child: Text(initials, style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: background))),
+child: _isUploadingPhoto
+? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+: photoUrl.isNotEmpty
+? ClipOval(child: Image.network(photoUrl, width: 60, height: 60, fit: BoxFit.cover))
+: Center(child: Text(initials, style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: background))),
 ),
 Positioned(
 bottom: 0, right: 0,
 child: Container(
-width: 20, height: 20,
+width: 22, height: 22,
 decoration: BoxDecoration(color: surface, shape: BoxShape.circle, border: Border.all(color: background, width: 2)),
-child: const Center(child: Icon(Icons.camera_alt, size: 10, color: Colors.white)),
+child: const Center(child: Icon(Icons.camera_alt, size: 11, color: Colors.white)),
 ),
 ),
 ],
 ),
+),
+
 const SizedBox(width: 14),
 Expanded(
 child: Column(
@@ -117,7 +180,7 @@ Expanded(child: _buildStatCard(Icons.local_shipping, totalLoads.toString() + ' L
 
 const SizedBox(height: 12),
 
-// RANK PROGRESS BAR
+// RANK PROGRESS
 Container(
 padding: const EdgeInsets.all(14),
 decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
@@ -150,9 +213,9 @@ const SizedBox(height: 16),
 // BUSINESS INFO
 _buildSectionLabel('BUSINESS INFO'),
 _buildInfoCard([
-_buildInfoRow('MC / DOT Number', mcDot.isNotEmpty ? mcDot : 'Not set', onTap: () => _editField(context, 'mcDot', 'MC / DOT Number', mcDot, user?.uid)),
-_buildInfoRow('Equipment Type', equipmentType.isNotEmpty ? equipmentType : 'Not set', onTap: () {}),
-_buildInfoRow('Dispatcher Email', dispatcherEmail.isNotEmpty ? dispatcherEmail : 'Not set', valueColor: dispatcherEmail.isNotEmpty ? orange : textMuted, onTap: () => _editField(context, 'dispatcherEmail', 'Dispatcher Email', dispatcherEmail, user?.uid)),
+_buildInfoRow('MC / DOT Number', mcDot.isNotEmpty ? mcDot : 'Tap to add', valueColor: mcDot.isEmpty ? textMuted : null, onTap: user != null ? () => _editField(context, 'mcDot', 'MC / DOT Number', mcDot, user.uid) : null),
+_buildInfoRow('Equipment Type', equipmentType.isNotEmpty ? equipmentType : 'Not set'),
+_buildInfoRow('Dispatcher Email', dispatcherEmail.isNotEmpty ? dispatcherEmail : 'Tap to add', valueColor: dispatcherEmail.isEmpty ? textMuted : orange, onTap: user != null ? () => _editField(context, 'dispatcherEmail', 'Dispatcher Email', dispatcherEmail, user.uid) : null),
 ]),
 
 const SizedBox(height: 16),
@@ -177,11 +240,7 @@ isAction: true,
 onTap: () async {
 await FirebaseAuth.instance.signOut();
 if (context.mounted) {
-Navigator.pushAndRemoveUntil(
-context,
-MaterialPageRoute(builder: (_) => const LoginPage()),
-(route) => false,
-);
+Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
 }
 },
 ),
@@ -193,39 +252,6 @@ const SizedBox(height: 24),
 );
 },
 ),
-),
-);
-}
-
-Future<void> _editField(BuildContext context, String field, String label, String currentValue, String? uid) async {
-if (uid == null) return;
-final controller = TextEditingController(text: currentValue);
-await showDialog(
-context: context,
-builder: (ctx) => AlertDialog(
-backgroundColor: surface,
-shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-title: Text('Update ' + label, style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w900, color: textPrimary)),
-content: TextField(
-controller: controller,
-style: GoogleFonts.barlow(fontSize: 14, color: textPrimary),
-decoration: InputDecoration(
-filled: true,
-fillColor: background,
-enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1C2E45))),
-focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF5921E))),
-),
-),
-actions: [
-TextButton(onPressed: () => Navigator.pop(ctx), child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: textMuted))),
-TextButton(
-onPressed: () async {
-await FirebaseFirestore.instance.collection('users').doc(uid).update({field: controller.text.trim()});
-if (ctx.mounted) Navigator.pop(ctx);
-},
-child: Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: orange)),
-),
-],
 ),
 );
 }
@@ -278,3 +304,4 @@ if (isAction) const Icon(Icons.chevron_right, color: Color(0xFF5A7A9A), size: 20
 );
 }
 }
+

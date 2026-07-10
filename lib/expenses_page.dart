@@ -22,17 +22,18 @@ static const Color orange = Color(0xFFF5921E);
 static const Color textPrimary = Color(0xFFFFFFFF);
 static const Color textMuted = Color(0xFF5A7A9A);
 static const Color success = Color(0xFF4ADE80);
+static const Color danger = Color(0xFFEF4444);
 
 final List<String> _categories = ['All', 'Fuel', 'Repairs', 'Tolls', 'Permits', 'Lodging', 'Lumper', 'Other'];
 
-final Map<String, String> _categoryIcons = {
-'Fuel': 'F',
-'Repairs': 'R',
-'Tolls': 'T',
-'Permits': 'P',
-'Lodging': 'L',
-'Lumper': 'LU',
-'Other': 'O',
+final Map<String, IconData> _categoryIcons = {
+'Fuel': Icons.local_gas_station,
+'Repairs': Icons.build,
+'Tolls': Icons.toll,
+'Permits': Icons.description,
+'Lodging': Icons.hotel,
+'Lumper': Icons.person,
+'Other': Icons.more_horiz,
 };
 
 Widget _buildBottomNav(BuildContext context) {
@@ -90,10 +91,19 @@ padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
 child: Row(
 mainAxisAlignment: MainAxisAlignment.spaceBetween,
 children: [
+Row(
+children: [
+GestureDetector(
+onTap: () => Navigator.pop(context),
+child: Container(width: 36, height: 36, decoration: BoxDecoration(color: orange, shape: BoxShape.circle), child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 22))),
+),
+const SizedBox(width: 12),
 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 Text(monthLabel, style: GoogleFonts.barlow(fontSize: 13, color: textMuted)),
-Text('Expenses', style: GoogleFonts.barlowCondensed(fontSize: 32, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
+Text('Expenses', style: GoogleFonts.barlowCondensed(fontSize: 28, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
 ]),
+],
+),
 GestureDetector(
 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
 child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(12)), child: Text('+ ADD', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: background))),
@@ -109,13 +119,18 @@ stream: FirebaseFirestore.instance
 .orderBy('createdAt', descending: true)
 .snapshots(),
 builder: (context, snapshot) {
-final docs = snapshot.data?.docs ?? [];
-final thisMonthDocs = docs.where((doc) {
+final allDocs = snapshot.data?.docs ?? [];
+
+final thisMonthDocs = allDocs.where((doc) {
 final data = doc.data() as Map<String, dynamic>;
 final createdAt = data['createdAt'];
-if (createdAt == null) return false;
+if (createdAt == null) return true;
+try {
 final date = (createdAt as dynamic).toDate() as DateTime;
 return date.month == now.month && date.year == now.year;
+} catch (e) {
+return true;
+}
 }).toList();
 
 final totalAmount = thisMonthDocs.fold<double>(0, (sum, doc) {
@@ -174,7 +189,16 @@ const SizedBox(height: 14),
 if (filteredDocs.isEmpty)
 Padding(
 padding: const EdgeInsets.all(24),
-child: Center(child: Text('No expenses yet this month.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted))),
+child: Center(child: Column(children: [
+const Icon(Icons.receipt_long, color: Color(0xFF5A7A9A), size: 48),
+const SizedBox(height: 12),
+Text('No expenses yet this month.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted)),
+const SizedBox(height: 8),
+GestureDetector(
+onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+child: Text('Add your first expense', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: orange)),
+),
+])),
 )
 else
 ...filteredDocs.map((doc) {
@@ -182,8 +206,38 @@ final data = doc.data() as Map<String, dynamic>;
 final amount = (data['amount'] ?? 0.0).toDouble();
 final category = data['category'] ?? 'Other';
 final note = data['note'] ?? '';
-final icon = _categoryIcons[category] ?? 'O';
-return Padding(
+final hasReceipt = data['hasReceipt'] ?? false;
+final icon = _categoryIcons[category] ?? Icons.more_horiz;
+
+return Dismissible(
+key: Key(doc.id),
+direction: DismissDirection.endToStart,
+confirmDismiss: (_) async {
+return await showDialog<bool>(
+context: context,
+builder: (ctx) => AlertDialog(
+backgroundColor: surface,
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+title: Text('Delete expense?', style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w900, color: textPrimary)),
+content: Text('This cannot be undone.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted)),
+actions: [
+TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: textMuted))),
+TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('YUP DELETE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: danger))),
+],
+),
+) ?? false;
+},
+onDismissed: (_) async {
+await FirebaseFirestore.instance.collection('expenses').doc(doc.id).delete();
+},
+background: Container(
+margin: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+decoration: BoxDecoration(color: danger, borderRadius: BorderRadius.circular(12)),
+alignment: Alignment.centerRight,
+padding: const EdgeInsets.only(right: 20),
+child: const Icon(Icons.delete_outline, color: Colors.white, size: 24),
+),
+child: Padding(
 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
 child: Container(
 padding: const EdgeInsets.all(14),
@@ -193,17 +247,20 @@ children: [
 Container(
 width: 42, height: 42,
 decoration: BoxDecoration(color: orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-child: Center(child: Text(icon, style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w900, color: orange))),
+child: Center(child: Icon(icon, color: orange, size: 20)),
 ),
 const SizedBox(width: 12),
 Expanded(
 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 Text(category, style: GoogleFonts.barlow(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
 if (note.isNotEmpty) Text(note, style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
+if (hasReceipt) Text('Receipt saved', style: GoogleFonts.barlow(fontSize: 10, color: success)),
+Text('Swipe left to delete', style: GoogleFonts.barlow(fontSize: 10, color: textMuted)),
 ]),
 ),
 Text('USD ' + amount.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
 ],
+),
 ),
 ),
 );
