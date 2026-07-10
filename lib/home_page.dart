@@ -109,7 +109,7 @@ Text(firstName + ' !!', style: GoogleFonts.barlowCondensed(fontSize: 28, fontWei
 ],
 ),
 GestureDetector(
-onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage())),
 child: Container(
 width: 44, height: 44,
 decoration: const BoxDecoration(color: orange, shape: BoxShape.circle),
@@ -176,11 +176,11 @@ Padding(
 padding: const EdgeInsets.symmetric(horizontal: 24),
 child: Column(
 children: [
-_buildNavCard(context, icon: Icons.local_shipping, title: 'LOADS', subtitle: 'New load - Load history', isPrimary: true, destination: const LoadsPage()),
+_buildNavCard(context, icon: Icons.local_shipping, title: 'LOADS', subtitle: 'New load - Load history', isPrimary: true, destination: LoadsPage()),
 const SizedBox(height: 12),
-_buildNavCard(context, icon: Icons.receipt_long, title: 'EXPENSES', subtitle: 'Log fuel, tolls, repairs', isPrimary: false, destination: const ExpensesPage()),
+_buildNavCard(context, icon: Icons.receipt_long, title: 'EXPENSES', subtitle: 'Log fuel, tolls, repairs', isPrimary: false, destination: ExpensesPage()),
 const SizedBox(height: 12),
-_buildNavCard(context, icon: Icons.bar_chart, title: 'TAXES', subtitle: 'P and L - Year-end export', isPrimary: false, destination: const TaxesPage()),
+_buildNavCard(context, icon: Icons.bar_chart, title: 'TAXES', subtitle: 'P and L - Year-end export', isPrimary: false, destination: TaxesPage()),
 ],
 ),
 ),
@@ -253,8 +253,8 @@ decoration: BoxDecoration(color: const Color(0xFF0D1E30), border: Border(top: Bo
 child: Row(
 children: [
 _buildNavItem(Icons.home, 'HOME', true, () {}),
-_buildNavItem(Icons.local_shipping, 'LOADS', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoadsPage()))),
-_buildNavItem(Icons.person, 'PROFILE', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()))),
+_buildNavItem(Icons.local_shipping, 'LOADS', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoadsPage()))),
+_buildNavItem(Icons.person, 'PROFILE', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage()))),
 ],
 ),
 );
