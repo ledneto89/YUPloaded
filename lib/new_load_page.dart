@@ -242,4 +242,3 @@ const SizedBox(height: 24),
 );
 }
 }
-

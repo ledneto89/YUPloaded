@@ -1,26 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'add_expense_page.dart';
+import 'home_page.dart';
+import 'profile_page.dart';
+import 'edit_expense_page.dart';
 
-class EditExpensePage extends StatefulWidget {
-final String expenseId;
-final Map<String, dynamic> expenseData;
-const EditExpensePage({super.key, required this.expenseId, required this.expenseData});
+class ExpensesPage extends StatefulWidget {
+const ExpensesPage({super.key});
 @override
-State<EditExpensePage> createState() => _EditExpensePageState();
+State<ExpensesPage> createState() => _ExpensesPageState();
 }
 
-class _EditExpensePageState extends State<EditExpensePage> {
-late TextEditingController _amountController;
-late TextEditingController _noteController;
-String? _selectedCategory;
-String? _receiptUrl;
-bool _isLoading = false;
-bool _isUploadingReceipt = false;
+class _ExpensesPageState extends State<ExpensesPage> {
+String _selectedCategory = 'All';
 
 static const Color background = Color(0xFF0B1628);
 static const Color surface = Color(0xFF122035);
@@ -29,125 +23,264 @@ static const Color orange = Color(0xFFF5921E);
 static const Color textPrimary = Color(0xFFFFFFFF);
 static const Color textMuted = Color(0xFF5A7A9A);
 static const Color success = Color(0xFF4ADE80);
+static const Color danger = Color(0xFFEF4444);
 
-final List<Map<String, String>> _cats = [
-{'icon': 'F', 'label': 'Fuel'}, {'icon': 'R', 'label': 'Repairs'}, {'icon': 'T', 'label': 'Tolls'},
-{'icon': 'P', 'label': 'Permits'}, {'icon': 'L', 'label': 'Lodging'}, {'icon': 'LU', 'label': 'Lumper'}, {'icon': 'O', 'label': 'Other'},
-];
+final List<String> _categories = ['All', 'Fuel', 'Repairs', 'Tolls', 'Permits', 'Lodging', 'Lumper', 'Other'];
 
-@override
-void initState() {
-super.initState();
-_amountController = TextEditingController(text: (widget.expenseData['amount'] ?? 0.0).toString());
-_noteController = TextEditingController(text: widget.expenseData['note'] ?? '');
-_selectedCategory = widget.expenseData['category'];
-_receiptUrl = widget.expenseData['receiptUrl'];
-}
+final Map<String, IconData> _categoryIcons = {
+'Fuel': Icons.local_gas_station,
+'Repairs': Icons.build,
+'Tolls': Icons.toll,
+'Permits': Icons.description,
+'Lodging': Icons.hotel,
+'Lumper': Icons.person,
+'Other': Icons.more_horiz,
+};
 
-Future<void> _uploadReceipt() async {
-try {
-final picker = ImagePicker();
-final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-if (picked == null) return;
-setState(() => _isUploadingReceipt = true);
-final user = FirebaseAuth.instance.currentUser;
-final uid = user?.uid ?? 'unknown';
-final ref = FirebaseStorage.instance.ref().child('receipts/' + uid + '/' + DateTime.now().millisecondsSinceEpoch.toString() + '.jpg');
-await ref.putFile(File(picked.path));
-final url = await ref.getDownloadURL();
-setState(() { _receiptUrl = url; _isUploadingReceipt = false; });
-} catch (e) {
-setState(() => _isUploadingReceipt = false);
-}
+Widget _buildBottomNav(BuildContext context) {
+return Container(
+decoration: BoxDecoration(color: const Color(0xFF0D1E30), border: Border(top: BorderSide(color: border))),
+child: Row(
+children: [
+_buildNavItem(Icons.home, 'HOME', false, () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()))),
+_buildNavItem(Icons.local_shipping, 'LOADS', false, () => Navigator.pop(context)),
+_buildNavItem(Icons.person, 'PROFILE', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()))),
+],
+),
+);
 }
 
-Future<void> _save() async {
-setState(() => _isLoading = true);
-try {
-await FirebaseFirestore.instance.collection('expenses').doc(widget.expenseId).update({
-'amount': double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0,
-'category': _selectedCategory,
-'note': _noteController.text.trim(),
-'receiptUrl': _receiptUrl ?? '',
-'hasReceipt': _receiptUrl != null && _receiptUrl!.isNotEmpty,
-'updatedAt': FieldValue.serverTimestamp(),
-});
-if (mounted) {
-ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense updated'), backgroundColor: Color(0xFF4ADE80)));
-Navigator.pop(context);
-}
-} catch (e) {
-if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ' + e.toString()), backgroundColor: Colors.red));
-} finally {
-if (mounted) setState(() => _isLoading = false);
-}
+Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
+return Expanded(
+child: GestureDetector(
+onTap: onTap,
+child: Padding(
+padding: const EdgeInsets.symmetric(vertical: 12),
+child: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+Icon(icon, color: isActive ? orange : textMuted, size: 22),
+const SizedBox(height: 4),
+Text(label, style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1, color: isActive ? orange : textMuted)),
+if (isActive) Container(margin: const EdgeInsets.only(top: 4), width: 4, height: 4, decoration: const BoxDecoration(color: Color(0xFFF5921E), shape: BoxShape.circle)),
+],
+),
+),
+),
+);
 }
 
 @override
 Widget build(BuildContext context) {
-final hasReceipt = _receiptUrl != null && _receiptUrl!.isNotEmpty;
+final user = FirebaseAuth.instance.currentUser;
+final now = DateTime.now();
+final monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+final monthLabel = monthNames[now.month - 1] + ' ' + now.year.toString();
+
 return Scaffold(
 backgroundColor: background,
 body: SafeArea(
+child: Column(
+children: [
+Expanded(
 child: SingleChildScrollView(
-padding: const EdgeInsets.all(24),
-child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-Row(children: [
-GestureDetector(onTap: () => Navigator.pop(context), child: Container(width: 36, height: 36, decoration: BoxDecoration(color: orange, shape: BoxShape.circle), child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 22)))),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Padding(
+padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+child: Row(
+mainAxisAlignment: MainAxisAlignment.spaceBetween,
+children: [
+Row(
+children: [
+GestureDetector(
+onTap: () => Navigator.pop(context),
+child: Container(width: 36, height: 36, decoration: BoxDecoration(color: orange, shape: BoxShape.circle), child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 22))),
+),
 const SizedBox(width: 12),
-Text('Edit Expense', style: GoogleFonts.barlowCondensed(fontSize: 24, fontWeight: FontWeight.w900, color: textPrimary)),
+Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+Text(monthLabel, style: GoogleFonts.barlow(fontSize: 13, color: textMuted)),
+Text('Expenses', style: GoogleFonts.barlowCondensed(fontSize: 28, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
 ]),
-const SizedBox(height: 20),
-Text('AMOUNT', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
-const SizedBox(height: 6),
-TextField(controller: _amountController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: GoogleFonts.barlowCondensed(fontSize: 36, fontWeight: FontWeight.w900, color: orange), decoration: InputDecoration(hintText: '0.00', hintStyle: GoogleFonts.barlowCondensed(fontSize: 36, color: const Color(0xFF2A4060)), prefixText: 'USD ', prefixStyle: GoogleFonts.barlowCondensed(fontSize: 24, fontWeight: FontWeight.w900, color: orange), filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)))),
-const SizedBox(height: 20),
-Text('CATEGORY', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
-const SizedBox(height: 8),
-GridView.builder(
-shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.1),
-itemCount: _cats.length,
-itemBuilder: (context, i) {
-final cat = _cats[i];
-final isSelected = _selectedCategory == cat['label'];
+],
+),
+GestureDetector(
+onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: orange, borderRadius: BorderRadius.circular(12)), child: Text('+ ADD', style: GoogleFonts.barlowCondensed(fontSize: 15, fontWeight: FontWeight.w900, color: background))),
+),
+],
+),
+),
+if (user != null)
+StreamBuilder<QuerySnapshot>(
+stream: FirebaseFirestore.instance
+.collection('expenses')
+.where('userId', isEqualTo: user.uid)
+.orderBy('createdAt', descending: true)
+.snapshots(),
+builder: (context, snapshot) {
+final allDocs = snapshot.data?.docs ?? [];
+
+final thisMonthDocs = allDocs.where((doc) {
+final data = doc.data() as Map<String, dynamic>;
+final createdAt = data['createdAt'];
+if (createdAt == null) return true;
+try {
+final date = (createdAt as dynamic).toDate() as DateTime;
+return date.month == now.month && date.year == now.year;
+} catch (e) {
+return true;
+}
+}).toList();
+
+final totalAmount = thisMonthDocs.fold<double>(0, (sum, doc) {
+final data = doc.data() as Map<String, dynamic>;
+return sum + ((data['amount'] ?? 0.0) as num).toDouble();
+});
+
+final filteredDocs = _selectedCategory == 'All'
+? thisMonthDocs
+: thisMonthDocs.where((doc) {
+final data = doc.data() as Map<String, dynamic>;
+return data['category'] == _selectedCategory;
+}).toList();
+
+return Column(
+children: [
+Padding(
+padding: const EdgeInsets.symmetric(horizontal: 24),
+child: Container(
+padding: const EdgeInsets.all(16),
+decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: border)),
+child: Row(
+mainAxisAlignment: MainAxisAlignment.spaceBetween,
+children: [
+Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+Text('TOTAL EXPENSES', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2, color: textMuted)),
+const SizedBox(height: 4),
+Text('USD ' + totalAmount.toStringAsFixed(0), style: GoogleFonts.barlowCondensed(fontSize: 36, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -1)),
+Text(monthLabel + ' - ' + thisMonthDocs.length.toString() + ' entries', style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
+]),
+],
+),
+),
+),
+const SizedBox(height: 14),
+SizedBox(
+height: 36,
+child: ListView(
+scrollDirection: Axis.horizontal,
+padding: const EdgeInsets.symmetric(horizontal: 24),
+children: _categories.map((cat) {
+final isActive = _selectedCategory == cat;
 return GestureDetector(
-onTap: () => setState(() => _selectedCategory = cat['label']),
-child: Container(decoration: BoxDecoration(color: isSelected ? orange : surface, borderRadius: BorderRadius.circular(10), border: isSelected ? null : Border.all(color: border)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-Text(cat['icon']!, style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: isSelected ? background : orange)),
-const SizedBox(height: 2),
-Text(cat['label']!, style: GoogleFonts.barlowCondensed(fontSize: 9, fontWeight: FontWeight.w800, color: isSelected ? background : textMuted), textAlign: TextAlign.center),
+onTap: () => setState(() => _selectedCategory = cat),
+child: Container(
+margin: const EdgeInsets.only(right: 8),
+padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+decoration: BoxDecoration(color: isActive ? orange : surface, borderRadius: BorderRadius.circular(20), border: isActive ? null : Border.all(color: border)),
+child: Text(cat, style: GoogleFonts.barlowCondensed(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1, color: isActive ? background : textMuted)),
+),
+);
+}).toList(),
+),
+),
+const SizedBox(height: 14),
+if (filteredDocs.isEmpty)
+Padding(
+padding: const EdgeInsets.all(24),
+child: Center(child: Column(children: [
+const Icon(Icons.receipt_long, color: Color(0xFF5A7A9A), size: 48),
+const SizedBox(height: 12),
+Text('No expenses yet this month.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted)),
+const SizedBox(height: 8),
+GestureDetector(
+onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+child: Text('Add your first expense', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: orange)),
+),
 ])),
+)
+else
+...filteredDocs.map((doc) {
+final data = doc.data() as Map<String, dynamic>;
+final amount = (data['amount'] ?? 0.0).toDouble();
+final category = data['category'] ?? 'Other';
+final note = data['note'] ?? '';
+final hasReceipt = data['hasReceipt'] ?? false;
+final icon = _categoryIcons[category] ?? Icons.more_horiz;
+
+return Dismissible(
+key: Key(doc.id),
+direction: DismissDirection.endToStart,
+confirmDismiss: (_) async {
+return await showDialog<bool>(
+context: context,
+builder: (ctx) => AlertDialog(
+backgroundColor: surface,
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+title: Text('Delete expense?', style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w900, color: textPrimary)),
+content: Text('This cannot be undone.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted)),
+actions: [
+TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('NOPE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: textMuted))),
+TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('YUP DELETE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: danger))),
+],
+),
+) ?? false;
+},
+onDismissed: (_) async {
+await FirebaseFirestore.instance.collection('expenses').doc(doc.id).delete();
+},
+background: Container(
+margin: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+decoration: BoxDecoration(color: danger, borderRadius: BorderRadius.circular(12)),
+alignment: Alignment.centerRight,
+padding: const EdgeInsets.only(right: 20),
+child: const Icon(Icons.delete_outline, color: Colors.white, size: 24),
+),
+child: Padding(
+padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: Container(
+padding: const EdgeInsets.all(14),
+decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
+child: Row(
+children: [
+Container(
+width: 42, height: 42,
+decoration: BoxDecoration(color: orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+child: Center(child: Icon(icon, color: orange, size: 20)),
+),
+const SizedBox(width: 12),
+Expanded(
+child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+Text(category, style: GoogleFonts.barlow(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
+if (note.isNotEmpty) Text(note, style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
+if (hasReceipt) Text('Receipt saved', style: GoogleFonts.barlow(fontSize: 10, color: success)),
+Text('Swipe left to delete', style: GoogleFonts.barlow(fontSize: 10, color: textMuted)),
+]),
+),
+Text('USD ' + amount.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
+],
+),
+),
+),
+);
+}),
+],
 );
 },
 ),
-const SizedBox(height: 16),
-Text('NOTE', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
-const SizedBox(height: 6),
-TextField(controller: _noteController, style: GoogleFonts.barlow(fontSize: 14, color: textPrimary), decoration: InputDecoration(hintText: 'Station, location, notes...', hintStyle: GoogleFonts.barlow(fontSize: 14, color: const Color(0xFF3A5070)), filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1C2E45), width: 1.5)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)))),
-const SizedBox(height: 16),
-Container(
-decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: hasReceipt ? success : border)),
-child: Column(children: [
-Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-Icon(hasReceipt ? Icons.check_circle : Icons.receipt_long, color: hasReceipt ? success : textMuted, size: 20),
-const SizedBox(width: 10),
-Text(hasReceipt ? 'Receipt uploaded' : 'No receipt yet', style: GoogleFonts.barlow(fontSize: 13, color: textMuted)),
-])),
-const Divider(height: 1, color: Color(0xFF1C2E45)),
-Row(children: [
-Expanded(child: GestureDetector(onTap: _isUploadingReceipt ? null : _uploadReceipt, child: Container(padding: const EdgeInsets.symmetric(vertical: 14), decoration: BoxDecoration(color: orange, borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12))), child: Center(child: _isUploadingReceipt ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(hasReceipt ? 'REPLACE' : 'ADD RECEIPT', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w900, color: background, letterSpacing: 1)))))),
-Expanded(child: GestureDetector(onTap: () => setState(() => _receiptUrl = null), child: Container(padding: const EdgeInsets.symmetric(vertical: 14), decoration: const BoxDecoration(borderRadius: BorderRadius.only(bottomRight: Radius.circular(12))), child: Center(child: Text('REMOVE', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF5A7A9A), letterSpacing: 1)))))),
-]),
-]),
-),
-const SizedBox(height: 20),
-SizedBox(width: double.infinity, height: 56, child: ElevatedButton(onPressed: _isLoading ? null : _save, style: ElevatedButton.styleFrom(backgroundColor: orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text('SAVE CHANGES', style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: background, letterSpacing: 2)))),
 const SizedBox(height: 24),
-]),
+],
+),
+),
+),
+_buildBottomNav(context),
+],
 ),
 ),
 );
 }
 }
+
 

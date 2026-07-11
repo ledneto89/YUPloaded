@@ -176,11 +176,11 @@ Padding(
 padding: const EdgeInsets.symmetric(horizontal: 24),
 child: Column(
 children: [
-_buildNavCard(context, icon: Icons.local_shipping, title: 'LOADS', subtitle: 'New load - Load history', isPrimary: true, destination: LoadsPage()),
+_buildNavCard(context, icon: Icons.local_shipping, title: 'LOADS', subtitle: 'New load - Load history', isPrimary: true, destinationBuilder: () => LoadsPage()),
 const SizedBox(height: 12),
-_buildNavCard(context, icon: Icons.receipt_long, title: 'EXPENSES', subtitle: 'Log fuel, tolls, repairs', isPrimary: false, destination: ExpensesPage()),
+_buildNavCard(context, icon: Icons.receipt_long, title: 'EXPENSES', subtitle: 'Log fuel, tolls, repairs', isPrimary: false, destinationBuilder: () => ExpensesPage()),
 const SizedBox(height: 12),
-_buildNavCard(context, icon: Icons.bar_chart, title: 'TAXES', subtitle: 'P and L - Year-end export', isPrimary: false, destination: TaxesPage()),
+_buildNavCard(context, icon: Icons.bar_chart, title: 'TAXES', subtitle: 'P and L - Year-end export', isPrimary: false, destinationBuilder: () => TaxesPage()),
 ],
 ),
 ),
@@ -217,9 +217,9 @@ Text(label, style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWei
 
 Widget _buildDivider() => Container(width: 1, height: 40, color: border);
 
-Widget _buildNavCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required bool isPrimary, required Widget destination}) {
+Widget _buildNavCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required bool isPrimary, required Widget Function() destinationBuilder}) {
 return GestureDetector(
-onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => destination)),
+onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => destinationBuilder())),
 child: Container(
 padding: const EdgeInsets.all(20),
 decoration: BoxDecoration(
@@ -280,3 +280,5 @@ if (isActive) Container(margin: const EdgeInsets.only(top: 4), width: 4, height:
 );
 }
 }
+
+
