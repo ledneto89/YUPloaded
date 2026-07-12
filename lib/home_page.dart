@@ -16,15 +16,7 @@ class HomePage extends StatelessWidget {
   static const Color orange = Color(0xFFF5921E);
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textMuted = Color(0xFF5A7A9A);
-
-  String _getRank(int totalLoads) {
-    if (totalLoads >= 500) return 'YUPLOADED Elite';
-    if (totalLoads >= 250) return 'Road Legend';
-    if (totalLoads >= 100) return 'Veteran Hauler';
-    if (totalLoads >= 50) return 'Highway Pro';
-    if (totalLoads >= 10) return 'Road Warrior';
-    return 'Rookie';
-  }
+  static const Color success = Color(0xFF4ADE80);
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -46,7 +38,9 @@ class HomePage extends StatelessWidget {
             final userData = userSnapshot.data?.data() as Map<String, dynamic>? ?? {};
             final firstName = userData['firstName'] ?? 'Driver';
             final totalLoads = (userData['totalLoads'] ?? 0) as int;
-            final rank = _getRank(totalLoads);
+            final verifiedLoads = (userData['verifiedLoads'] ?? 0) as int;
+            final isVerified = verifiedLoads >= 100;
+            final verifiedProgress = (verifiedLoads / 100).clamp(0.0, 1.0);
 
             return StreamBuilder<QuerySnapshot>(
               stream: user != null ? FirebaseFirestore.instance.collection('loads').where('userId', isEqualTo: user.uid).snapshots() : null,
@@ -93,24 +87,29 @@ class HomePage extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(_getGreeting(), style: GoogleFonts.barlow(fontSize: 13, color: textMuted, fontWeight: FontWeight.w500)),
-                                      Text(firstName + ' !!', style: GoogleFonts.barlowCondensed(fontSize: 28, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
-                                    ],
-                                  ),
+                                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text(_getGreeting(), style: GoogleFonts.barlow(fontSize: 13, color: textMuted, fontWeight: FontWeight.w500)),
+                                    Text(firstName + ' !!', style: GoogleFonts.barlowCondensed(fontSize: 28, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
+                                  ]),
                                   GestureDetector(
                                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage())),
                                     child: Container(
                                       width: 44, height: 44,
-                                      decoration: const BoxDecoration(color: orange, shape: BoxShape.circle),
-                                      child: Center(child: Text(firstName.isNotEmpty ? firstName[0].toUpperCase() : 'D', style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: background))),
+                                      decoration: BoxDecoration(
+                                        color: isVerified ? success : orange,
+                                        shape: BoxShape.circle,
+                                        border: isVerified ? Border.all(color: success, width: 2) : null,
+                                      ),
+                                      child: Center(child: isVerified
+                                          ? const Icon(Icons.shield, color: Colors.white, size: 22)
+                                          : Text(firstName.isNotEmpty ? firstName[0].toUpperCase() : 'D', style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: background))),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
+
+                            // EARNINGS SUMMARY
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),
                               child: Container(
@@ -126,55 +125,98 @@ class HomePage extends StatelessWidget {
                                 ),
                               ),
                             ),
+
                             const SizedBox(height: 10),
+
+                            // ROAD TO VERIFIED TRACKER
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('MONTHLY MILES', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
-                                          const SizedBox(height: 4),
-                                          Text(thisMonthMiles.toString() + ' mi', style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
-                                        ],
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: surface,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: isVerified ? success.withValues(alpha: 0.5) : orange.withValues(alpha: 0.3)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(children: [
+                                          Icon(Icons.shield, color: isVerified ? success : textMuted, size: 16),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isVerified ? 'YUPLOADED VERIFIED' : 'ROAD TO VERIFIED',
+                                            style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: isVerified ? success : textMuted),
+                                          ),
+                                        ]),
+                                        Text(
+                                          isVerified ? 'Earned. Not bought.' : verifiedLoads.toString() + ' of 100',
+                                          style: GoogleFonts.barlowCondensed(fontSize: 13, fontWeight: FontWeight.w800, color: isVerified ? success : orange),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: isVerified ? 1.0 : verifiedProgress,
+                                        backgroundColor: background,
+                                        valueColor: AlwaysStoppedAnimation<Color>(isVerified ? success : orange),
+                                        minHeight: 8,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: orange.withValues(alpha: 0.3))),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('CURRENT RANK', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
-                                          const SizedBox(height: 4),
-                                          Text(rank, style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: orange, letterSpacing: -0.5)),
-                                        ],
-                                      ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      isVerified
+                                          ? verifiedLoads.toString() + ' broker-confirmed loads'
+                                          : (100 - verifiedLoads).toString() + ' broker-confirmed loads until verified',
+                                      style: GoogleFonts.barlow(fontSize: 11, color: textMuted),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 20),
+
+                            const SizedBox(height: 10),
+
+                            // MILES
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),
-                              child: Column(
-                                children: [
-                                  _buildNavCard(context, icon: Icons.local_shipping, title: 'LOADS', subtitle: 'New load - Load history', isPrimary: true, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoadsPage()))),
-                                  const SizedBox(height: 12),
-                                  _buildNavCard(context, icon: Icons.receipt_long, title: 'EXPENSES', subtitle: 'Log fuel, tolls, repairs', isPrimary: false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ExpensesPage()))),
-                                  const SizedBox(height: 12),
-                                  _buildNavCard(context, icon: Icons.bar_chart, title: 'TAXES', subtitle: 'P and L - Year-end export', isPrimary: false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaxesPage()))),
-                                ],
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text('MONTHLY MILES', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
+                                      const SizedBox(height: 4),
+                                      Text(thisMonthMiles.toString() + ' mi', style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
+                                    ]),
+                                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                      Text('TOTAL LOADS', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
+                                      const SizedBox(height: 4),
+                                      Text(totalLoads.toString(), style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -0.5)),
+                                    ]),
+                                  ],
+                                ),
                               ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Column(children: [
+                                _buildNavCard(context, icon: Icons.local_shipping, title: 'LOADS', subtitle: 'New load - Load history', isPrimary: true, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoadsPage()))),
+                                const SizedBox(height: 12),
+                                _buildNavCard(context, icon: Icons.receipt_long, title: 'EXPENSES', subtitle: 'Log fuel, tolls, repairs', isPrimary: false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ExpensesPage()))),
+                                const SizedBox(height: 12),
+                                _buildNavCard(context, icon: Icons.bar_chart, title: 'TAXES', subtitle: 'P and L - Year-end export', isPrimary: false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaxesPage()))),
+                              ]),
                             ),
                             const SizedBox(height: 24),
                           ],
@@ -196,13 +238,11 @@ class HomePage extends StatelessWidget {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        child: Column(
-          children: [
-            Text(value, style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: valueColor, letterSpacing: -0.5)),
-            const SizedBox(height: 3),
-            Text(label, style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: textMuted)),
-          ],
-        ),
+        child: Column(children: [
+          Text(value, style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: valueColor, letterSpacing: -0.5)),
+          const SizedBox(height: 3),
+          Text(label, style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: textMuted)),
+        ]),
       ),
     );
   }
@@ -214,27 +254,16 @@ class HomePage extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isPrimary ? orange : surface,
-          borderRadius: BorderRadius.circular(16),
-          border: isPrimary ? null : Border.all(color: border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: isPrimary ? background : orange, size: 28),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w900, color: isPrimary ? background : textPrimary, letterSpacing: 0.5)),
-                  Text(subtitle, style: GoogleFonts.barlow(fontSize: 12, color: isPrimary ? background.withValues(alpha: 0.6) : textMuted, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: isPrimary ? background.withValues(alpha: 0.5) : textMuted),
-          ],
-        ),
+        decoration: BoxDecoration(color: isPrimary ? orange : surface, borderRadius: BorderRadius.circular(16), border: isPrimary ? null : Border.all(color: border)),
+        child: Row(children: [
+          Icon(icon, color: isPrimary ? background : orange, size: 28),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w900, color: isPrimary ? background : textPrimary, letterSpacing: 0.5)),
+            Text(subtitle, style: GoogleFonts.barlow(fontSize: 12, color: isPrimary ? background.withValues(alpha: 0.6) : textMuted, fontWeight: FontWeight.w500)),
+          ])),
+          Icon(Icons.chevron_right, color: isPrimary ? background.withValues(alpha: 0.5) : textMuted),
+        ]),
       ),
     );
   }
@@ -242,13 +271,11 @@ class HomePage extends StatelessWidget {
   Widget _buildBottomNav(BuildContext context) {
     return Container(
       decoration: BoxDecoration(color: const Color(0xFF0D1E30), border: Border(top: BorderSide(color: border))),
-      child: Row(
-        children: [
-          _buildNavItem(Icons.home, 'HOME', true, () {}),
-          _buildNavItem(Icons.local_shipping, 'LOADS', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoadsPage()))),
-          _buildNavItem(Icons.person, 'PROFILE', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage()))),
-        ],
-      ),
+      child: Row(children: [
+        _buildNavItem(Icons.home, 'HOME', true, () {}),
+        _buildNavItem(Icons.local_shipping, 'LOADS', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoadsPage()))),
+        _buildNavItem(Icons.person, 'PROFILE', false, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage()))),
+      ]),
     );
   }
 
@@ -258,15 +285,12 @@ class HomePage extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: isActive ? orange : textMuted, size: 22),
-              const SizedBox(height: 4),
-              Text(label, style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1, color: isActive ? orange : textMuted)),
-              if (isActive) Container(margin: const EdgeInsets.only(top: 4), width: 4, height: 4, decoration: const BoxDecoration(color: Color(0xFFF5921E), shape: BoxShape.circle)),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, color: isActive ? orange : textMuted, size: 22),
+            const SizedBox(height: 4),
+            Text(label, style: GoogleFonts.barlowCondensed(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1, color: isActive ? orange : textMuted)),
+            if (isActive) Container(margin: const EdgeInsets.only(top: 4), width: 4, height: 4, decoration: const BoxDecoration(color: Color(0xFFF5921E), shape: BoxShape.circle)),
+          ]),
         ),
       ),
     );
