@@ -7,7 +7,7 @@ class EmailService {
   static const String _publicKey = 'pi76fwr';
 
   // Base URL for confirmation - update this to your real domain when live
-  static const String _confirmBaseUrl = 'https://yuploaded.com/confirm';
+  static const String _confirmBaseUrl = 'https://us-central1-yuploaded-998bb.cloudfunctions.net/confirmLoad';
 
   static Future<bool> sendInvoice({
     required String brokerEmail,

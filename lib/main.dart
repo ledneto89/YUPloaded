@@ -185,8 +185,10 @@ child: SingleChildScrollView(
 padding: const EdgeInsets.all(24),
 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 const SizedBox(height: 20),
-Text('YUP', style: GoogleFonts.barlowCondensed(fontSize: 52, fontWeight: FontWeight.w900, color: orange, letterSpacing: -2, height: 1)),
-Text('loaded', style: GoogleFonts.barlowCondensed(fontSize: 36, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -1, height: 1)),
+RichText(text: TextSpan(children: [
+  TextSpan(text: 'YUP', style: GoogleFonts.barlowCondensed(fontSize: 48, fontWeight: FontWeight.w900, color: orange, letterSpacing: -2)),
+  TextSpan(text: 'loaded', style: GoogleFonts.barlowCondensed(fontSize: 48, fontWeight: FontWeight.w900, color: textPrimary, letterSpacing: -2)),
+])),
 const SizedBox(height: 8),
 Text('Snap. Invoice. Get Paid.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted)),
 const SizedBox(height: 32),
