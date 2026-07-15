@@ -18,9 +18,9 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _foundingFull = false;
   bool _isFleetOwner = false;
 
-  static const String stripeFoundingLink = 'PASTE_FOUNDING_STRIPE_LINK';
-  static const String stripeStandardLink = 'PASTE_STANDARD_STRIPE_LINK';
-  static const String stripeFleetLink = 'PASTE_FLEET_STRIPE_LINK';
+  static const String stripeFoundingLink = 'https://buy.stripe.com/test_cNi00j7JifeJbFp5GB2VG01';
+  static const String stripeStandardLink = 'https://buy.stripe.com/test_eVqcN5fbKaYt8td6KF2VG02';
+  static const String stripeFleetLink = 'https://buy.stripe.com/test_bJecN51kU8Ql4cXd932VG03';
 
   static const Color background = Color(0xFF0B1628);
   static const Color surface = Color(0xFF122035);
