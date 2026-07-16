@@ -139,13 +139,13 @@ class _QuickDetailsPageState extends State<QuickDetailsPage> {
       final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       final data = doc.data() ?? {};
       final totalLoads = (data['totalLoads'] ?? 0) as int;
-      final mcClean = mcNumber.replaceAll(RegExp(r'[^0-9]'), '');
-      final mcSuffix = mcClean.length >= 4 ? mcClean.substring(mcClean.length - 4) : mcClean.padLeft(4, '0');
-      final loadNumber = 'YU-' + mcSuffix + '-' + (totalLoads + 1).toString().padLeft(4, '0');
       final firstName = data['firstName'] ?? 'Driver';
       final lastName = data['lastName'] ?? '';
       final driverName = firstName + ' ' + lastName;
       final mcNumber = data['mcDot'] ?? '';
+      final mcClean = mcNumber.replaceAll(RegExp(r'[^0-9]'), '');
+      final mcSuffix = mcClean.length >= 4 ? mcClean.substring(mcClean.length - 4) : mcClean.padLeft(4, '0');
+      final loadNumber = 'YU-' + mcSuffix + '-' + (totalLoads + 1).toString().padLeft(4, '0');
       final brokerEmail = _brokerEmailController.text.trim();
       final rate = double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0.0;
       final pickupZip = _pickupZipController.text.trim();
