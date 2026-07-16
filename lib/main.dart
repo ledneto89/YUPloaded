@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -57,6 +58,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isUploadingLicense = false;
   bool _isFleetOwner = false;
   bool _isFleetDriver = false;
+  bool _certifiedAccurate = false;
 
   static const Color background = Color(0xFF0B1628);
   static const Color surface = Color(0xFF122035);
@@ -106,6 +108,10 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: danger));
+  }
+
   Future<void> _register() async {
     if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
       _showError('Please enter your full name'); return;
@@ -118,6 +124,9 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       _showError('Please enter email and password'); return;
+    }
+    if (!_certifiedAccurate) {
+      _showError('You must certify that your information is accurate'); return;
     }
 
     String? fleetOwnerId;
@@ -137,6 +146,14 @@ class _RegisterPageState extends State<RegisterPage> {
       if (!_validateMC(_mcController.text)) {
         _showError('Please enter a valid MC number'); return;
       }
+      // Check for duplicate MC number
+      final mcCleaned = _mcController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+      final existingMC = await FirebaseFirestore.instance.collection('users').where('mcDot', isEqualTo: mcCleaned).limit(1).get();
+      if (existingMC.docs.isNotEmpty) {
+        _showError('This MC number is already registered. If this is your MC contact customerservice@yuploaded.com');
+        setState(() => _isLoading = false);
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -148,7 +165,6 @@ class _RegisterPageState extends State<RegisterPage> {
       final uid = credential.user!.uid;
       final fleetCode = _isFleetOwner ? _generateFleetCode() : null;
 
-      // Get MC from fleet owner if driver
       String mcDot = _mcController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
       if (_isFleetDriver && fleetOwnerId != null) {
         final ownerDoc = await FirebaseFirestore.instance.collection('users').doc(fleetOwnerId).get();
@@ -171,6 +187,7 @@ class _RegisterPageState extends State<RegisterPage> {
         'isFleetDriver': _isFleetDriver,
         'fleetId': fleetOwnerId ?? '',
         'fleetCode': fleetCode ?? '',
+        'certifiedAt': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -184,10 +201,6 @@ class _RegisterPageState extends State<RegisterPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: danger));
   }
 
   Widget _buildField(String label, TextEditingController controller, {TextInputType type = TextInputType.text, bool obscure = false, String? hint}) {
@@ -226,16 +239,11 @@ class _RegisterPageState extends State<RegisterPage> {
             Container(
               decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
               child: Column(children: [
-                // SOLO DRIVER
                 GestureDetector(
                   onTap: () => setState(() { _isFleetOwner = false; _isFleetDriver = false; }),
                   child: Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: !_isFleetOwner && !_isFleetDriver ? orange.withValues(alpha: 0.1) : Colors.transparent,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      border: Border(bottom: BorderSide(color: border, width: 0.5)),
-                    ),
+                    decoration: BoxDecoration(color: !_isFleetOwner && !_isFleetDriver ? orange.withValues(alpha: 0.1) : Colors.transparent, borderRadius: const BorderRadius.vertical(top: Radius.circular(12)), border: Border(bottom: BorderSide(color: border, width: 0.5))),
                     child: Row(children: [
                       Icon(Icons.person, color: !_isFleetOwner && !_isFleetDriver ? orange : textMuted, size: 20),
                       const SizedBox(width: 12),
@@ -247,15 +255,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     ]),
                   ),
                 ),
-                // FLEET OWNER
                 GestureDetector(
                   onTap: () => setState(() { _isFleetOwner = true; _isFleetDriver = false; }),
                   child: Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: _isFleetOwner ? orange.withValues(alpha: 0.1) : Colors.transparent,
-                      border: Border(bottom: BorderSide(color: border, width: 0.5)),
-                    ),
+                    decoration: BoxDecoration(color: _isFleetOwner ? orange.withValues(alpha: 0.1) : Colors.transparent, border: Border(bottom: BorderSide(color: border, width: 0.5))),
                     child: Row(children: [
                       Icon(Icons.local_shipping, color: _isFleetOwner ? orange : textMuted, size: 20),
                       const SizedBox(width: 12),
@@ -267,15 +271,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     ]),
                   ),
                 ),
-                // FLEET DRIVER
                 GestureDetector(
                   onTap: () => setState(() { _isFleetOwner = false; _isFleetDriver = true; }),
                   child: Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: _isFleetDriver ? orange.withValues(alpha: 0.1) : Colors.transparent,
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                    ),
+                    decoration: BoxDecoration(color: _isFleetDriver ? orange.withValues(alpha: 0.1) : Colors.transparent, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12))),
                     child: Row(children: [
                       Icon(Icons.badge, color: _isFleetDriver ? orange : textMuted, size: 20),
                       const SizedBox(width: 12),
@@ -298,7 +298,6 @@ class _RegisterPageState extends State<RegisterPage> {
             ]),
             const SizedBox(height: 12),
 
-            // MC NUMBER - only for solo and fleet owner
             if (!_isFleetDriver) ...[
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -308,18 +307,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 ]),
                 const SizedBox(height: 6),
                 TextField(
-                  controller: _mcController,
-                  keyboardType: TextInputType.number,
+                  controller: _mcController, keyboardType: TextInputType.number,
                   style: GoogleFonts.barlow(fontSize: 14, color: textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'MC number (numbers only)',
-                    hintStyle: GoogleFonts.barlow(fontSize: 13, color: const Color(0xFF3A5070)),
-                    prefixText: 'MC-',
-                    prefixStyle: GoogleFonts.barlow(fontSize: 14, color: orange, fontWeight: FontWeight.w600),
-                    filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1C2E45), width: 1.5)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)),
-                  ),
+                  decoration: InputDecoration(hintText: 'MC number (numbers only)', hintStyle: GoogleFonts.barlow(fontSize: 13, color: const Color(0xFF3A5070)), prefixText: 'MC-', prefixStyle: GoogleFonts.barlow(fontSize: 14, color: orange, fontWeight: FontWeight.w600), filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1C2E45), width: 1.5)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5))),
                 ),
                 const SizedBox(height: 4),
                 Text('Your FMCSA Motor Carrier number', style: GoogleFonts.barlow(fontSize: 10, color: textMuted)),
@@ -327,7 +317,6 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 12),
             ],
 
-            // FLEET CODE - only for fleet drivers
             if (_isFleetDriver) ...[
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -340,13 +329,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _fleetCodeController,
                   style: GoogleFonts.barlowCondensed(fontSize: 20, fontWeight: FontWeight.w800, color: orange),
                   textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    hintText: 'YU-XXXXXX',
-                    hintStyle: GoogleFonts.barlow(fontSize: 13, color: const Color(0xFF3A5070)),
-                    filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)),
-                  ),
+                  decoration: InputDecoration(hintText: 'YU-XXXXXX', hintStyle: GoogleFonts.barlow(fontSize: 13, color: const Color(0xFF3A5070)), filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5))),
                 ),
                 const SizedBox(height: 4),
                 Text('Get this code from your fleet owner', style: GoogleFonts.barlow(fontSize: 10, color: textMuted)),
@@ -354,7 +337,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 12),
             ],
 
-            // DRIVER LICENSE UPLOAD
+            // LICENSE UPLOAD
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Text('DRIVER LICENSE', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
@@ -403,7 +386,52 @@ class _RegisterPageState extends State<RegisterPage> {
             _buildField('EMAIL', _emailController, type: TextInputType.emailAddress, hint: 'your@email.com'),
             const SizedBox(height: 12),
             _buildField('PASSWORD', _passwordController, obscure: true, hint: 'Minimum 6 characters'),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // CERTIFICATION CHECKBOX
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _certifiedAccurate ? success : border, width: 1.5),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _certifiedAccurate = !_certifiedAccurate),
+                    child: Container(
+                      width: 24, height: 24,
+                      decoration: BoxDecoration(
+                        color: _certifiedAccurate ? success : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: _certifiedAccurate ? success : textMuted, width: 2),
+                      ),
+                      child: _certifiedAccurate ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.barlow(fontSize: 12, color: textMuted, height: 1.5),
+                        children: [
+                          const TextSpan(text: 'I certify that the driver license I am uploading belongs to me and all information provided is accurate. I understand that YUPLOADED is a document repository and communication platform. The accuracy of all submitted documents and information is solely my responsibility. Providing false information may constitute fraud under federal law and violates '),
+                          TextSpan(
+                            text: 'YUPLOADED Terms of Service',
+                            style: GoogleFonts.barlow(fontSize: 12, color: orange, fontWeight: FontWeight.w600),
+                          ),
+                          const TextSpan(text: '.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
 
             // VERIFIED PREVIEW
             Container(
