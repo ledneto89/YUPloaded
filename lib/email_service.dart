@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class EmailService {
   static const String _serviceId = 'service_lsbabw6';
   static const String _templateId = 'template_uudk7dh';
-  static const String _publicKey = 'pi76fwr';
+  static const String _publicKey = '9Q40PrgjQF6dCbg-y';
 
   // Base URL for confirmation - update this to your real domain when live
   static const String _confirmBaseUrl = 'https://us-central1-yuploaded-998bb.cloudfunctions.net/confirmLoad';
