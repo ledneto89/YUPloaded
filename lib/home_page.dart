@@ -182,6 +182,34 @@ class HomePage extends StatelessWidget {
 
                             const SizedBox(height: 10),
 
+                            // LICENSE UPLOAD BANNER - shows after 10 loads if no license
+                            if (totalLoads >= 10 && (userData['licenseUrl'] == null || (userData['licenseUrl'] as String).isEmpty))
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                child: GestureDetector(
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage())),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF122035),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFF5921E), width: 1.5),
+                                    ),
+                                    child: Row(children: [
+                                      const Icon(Icons.badge, color: Color(0xFFF5921E), size: 20),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                        Text('Upload your driver license', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                                        Text('Required to unlock Road to Verified status', style: GoogleFonts.barlow(fontSize: 11, color: const Color(0xFF5A7A9A))),
+                                      ])),
+                                      const Icon(Icons.chevron_right, color: Color(0xFFF5921E), size: 20),
+                                    ]),
+                                  ),
+                                ),
+                              ),
+
+                            const SizedBox(height: 10),
+
                             // MILES
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),

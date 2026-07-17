@@ -116,9 +116,6 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
       _showError('Please enter your full name'); return;
     }
-    if (_licenseUrl == null) {
-      _showError('Driver license photo is required'); return;
-    }
     if (_equipmentType == null) {
       _showError('Please select your equipment type'); return;
     }
@@ -342,7 +339,7 @@ class _RegisterPageState extends State<RegisterPage> {
               Row(children: [
                 Text('DRIVER LICENSE', style: GoogleFonts.barlowCondensed(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: textMuted)),
                 const SizedBox(width: 8),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: danger.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)), child: Text('REQUIRED', style: GoogleFonts.barlowCondensed(fontSize: 9, fontWeight: FontWeight.w900, color: danger, letterSpacing: 1))),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: textMuted.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)), child: Text('OPTIONAL AT SIGNUP', style: GoogleFonts.barlowCondensed(fontSize: 9, fontWeight: FontWeight.w900, color: textMuted, letterSpacing: 1))),
               ]),
               const SizedBox(height: 6),
               GestureDetector(
@@ -355,7 +352,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_licenseUrl != null ? 'License uploaded' : 'Upload driver license photo', style: GoogleFonts.barlow(fontSize: 14, color: _licenseUrl != null ? success : textPrimary, fontWeight: FontWeight.w500)),
-                      Text('Verifies your identity as a licensed driver', style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
+                      Text('Required to unlock Road to Verified status', style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
                     ])),
                     if (_isUploadingLicense) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFFF5921E), strokeWidth: 2))
                     else Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: _licenseUrl != null ? success.withValues(alpha: 0.12) : orange, borderRadius: BorderRadius.circular(8)), child: Text(_licenseUrl != null ? 'REPLACE' : 'UPLOAD', style: GoogleFonts.barlowCondensed(fontSize: 12, fontWeight: FontWeight.w900, color: _licenseUrl != null ? success : background))),
@@ -417,7 +414,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       text: TextSpan(
                         style: GoogleFonts.barlow(fontSize: 12, color: textMuted, height: 1.5),
                         children: [
-                          const TextSpan(text: 'I certify that the driver license I am uploading belongs to me and all information provided is accurate. I understand that YUPLOADED is a document repository and communication platform. The accuracy of all submitted documents and information is solely my responsibility. Providing false information may constitute fraud under federal law and violates '),
+                          const TextSpan(text: 'I certify that all information provided is accurate including my legal name and MC number. If I choose to upload a driver license now or at any future time, I certify it belongs to me. I understand that YUPLOADED is a document repository and communication platform. The accuracy of all submitted information is solely my responsibility. Providing false information may constitute fraud under federal law and violates '),
                           TextSpan(
                             text: 'YUPLOADED Terms of Service',
                             style: GoogleFonts.barlow(fontSize: 12, color: orange, fontWeight: FontWeight.w600),
