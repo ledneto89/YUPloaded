@@ -72,6 +72,38 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _deleteAccount(BuildContext context, String uid) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete Account', style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: danger)),
+        content: Text('This will permanently delete your account, all your loads, documents, and verified history. This cannot be undone.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted, height: 1.6)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('CANCEL', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: textMuted))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('DELETE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: danger))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      // Delete all loads
+      final loads = await FirebaseFirestore.instance.collection('loads').where('userId', isEqualTo: uid).get();
+      for (final doc in loads.docs) { await doc.reference.delete(); }
+      // Delete all expenses
+      final expenses = await FirebaseFirestore.instance.collection('expenses').where('userId', isEqualTo: uid).get();
+      for (final doc in expenses.docs) { await doc.reference.delete(); }
+      // Delete user document
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      // Delete Firebase Auth account
+      await FirebaseAuth.instance.currentUser?.delete();
+      if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting account. Please contact customerservice@yuploaded.com'), backgroundColor: danger));
+    }
+  }
+
   Future<void> _uploadLicense(String uid) async {
     // Show certification dialog first
     final confirmed = await showDialog<bool>(
