@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
+import 'package:share_plus/share_plus.dart';
 
 class EditExpensePage extends StatefulWidget {
   final String expenseId;
@@ -142,6 +143,25 @@ class _EditExpensePageState extends State<EditExpensePage> {
               ]),
             ),
             const SizedBox(height: 20),
+            if (_receiptUrl != null && _receiptUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SizedBox(
+                  width: double.infinity, height: 52,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final box = context.findRenderObject() as RenderBox?;
+                      await Share.share(
+                        'YUPLOADED Expense Receipt\n\nCategory: ' + (widget.expenseData['category'] ?? '') + '\nAmount: USD ' + (widget.expenseData['amount'] ?? '0').toString() + '\n\nReceipt: ' + _receiptUrl!,
+                        subject: 'YUPLOADED Expense Receipt',
+                        sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : const Rect.fromLTWH(0, 0, 393, 852),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF1C2E45)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                    child: Text('SEND RECEIPT', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                  ),
+                ),
+              ),
             SizedBox(width: double.infinity, height: 56, child: ElevatedButton(onPressed: _isLoading ? null : _save, style: ElevatedButton.styleFrom(backgroundColor: orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text('SAVE CHANGES', style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: background, letterSpacing: 2)))),
             const SizedBox(height: 24),
           ]),

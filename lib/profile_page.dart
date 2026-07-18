@@ -73,21 +73,53 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _deleteAccount(BuildContext context, String uid) async {
+    final passwordController = TextEditingController();
+
+    // Step 1 - confirm intent
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Delete Account', style: GoogleFonts.barlowCondensed(fontSize: 22, fontWeight: FontWeight.w900, color: danger)),
-        content: Text('This will permanently delete your account, all your loads, documents, and verified history. This cannot be undone.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted, height: 1.6)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('This will permanently delete your account, all your loads, documents, and verified history. This cannot be undone.', style: GoogleFonts.barlow(fontSize: 14, color: textMuted, height: 1.6)),
+          const SizedBox(height: 16),
+          Text('Enter your password to confirm:', style: GoogleFonts.barlow(fontSize: 13, color: textMuted)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            style: GoogleFonts.barlow(fontSize: 14, color: textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Your password',
+              hintStyle: GoogleFonts.barlow(fontSize: 13, color: const Color(0xFF3A5070)),
+              filled: true, fillColor: background, contentPadding: const EdgeInsets.all(12),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1C2E45))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: danger)),
+            ),
+          ),
+        ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('CANCEL', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: textMuted))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('DELETE', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: danger))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('DELETE FOREVER', style: GoogleFonts.barlowCondensed(fontSize: 16, fontWeight: FontWeight.w900, color: danger))),
         ],
       ),
     );
     if (confirmed != true) return;
+    if (passwordController.text.isEmpty) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password required to delete account'), backgroundColor: Color(0xFFEF4444)));
+      return;
+    }
+
     try {
+      // Re-authenticate first
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final email = user.email ?? '';
+      final credential = EmailAuthProvider.credential(email: email, password: passwordController.text);
+      await user.reauthenticateWithCredential(credential);
+
       // Delete all loads
       final loads = await FirebaseFirestore.instance.collection('loads').where('userId', isEqualTo: uid).get();
       for (final doc in loads.docs) { await doc.reference.delete(); }
@@ -97,10 +129,15 @@ class _ProfilePageState extends State<ProfilePage> {
       // Delete user document
       await FirebaseFirestore.instance.collection('users').doc(uid).delete();
       // Delete Firebase Auth account
-      await FirebaseAuth.instance.currentUser?.delete();
+      await user.delete();
       if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
+    } on FirebaseAuthException catch (e) {
+      String msg = 'Error deleting account';
+      if (e.code == 'wrong-password') msg = 'Incorrect password. Please try again.';
+      if (e.code == 'too-many-requests') msg = 'Too many attempts. Please try again later.';
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: danger));
     } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting account. Please contact customerservice@yuploaded.com'), backgroundColor: danger));
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error deleting account. Please contact customerservice@yuploaded.com'), backgroundColor: Color(0xFFEF4444)));
     }
   }
 
@@ -277,7 +314,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 const SizedBox(height: 16),
 
-                // SIGN OUT + DELETE
+                // SIGN OUT
                 Container(
                   decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
                   child: Column(children: [
@@ -291,7 +328,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 const SizedBox(height: 24),
               ]),
-
             );
           },
         ),
