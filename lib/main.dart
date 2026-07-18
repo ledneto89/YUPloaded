@@ -143,14 +143,6 @@ class _RegisterPageState extends State<RegisterPage> {
       if (!_validateMC(_mcController.text)) {
         _showError('Please enter a valid MC number'); return;
       }
-      // Check for duplicate MC number
-      final mcCleaned = _mcController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
-      final existingMC = await FirebaseFirestore.instance.collection('users').where('mcDot', isEqualTo: mcCleaned).limit(1).get();
-      if (existingMC.docs.isNotEmpty) {
-        _showError('This MC number is already registered. If this is your MC contact customerservice@yuploaded.com');
-        setState(() => _isLoading = false);
-        return;
-      }
     }
 
     setState(() => _isLoading = true);

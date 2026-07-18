@@ -277,17 +277,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 const SizedBox(height: 16),
 
-                // SIGN OUT
+                // SIGN OUT + DELETE
                 Container(
                   decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
-                  child: _editableRow('Sign Out', '', valueColor: danger, isAction: true, onTap: () async {
-                    await FirebaseAuth.instance.signOut();
-                    if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
-                  }),
+                  child: Column(children: [
+                    _editableRow('Sign Out', '', valueColor: danger, isAction: true, onTap: () async {
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
+                    }),
+                    _editableRow('Delete Account', '', valueColor: danger, isAction: true, onTap: user != null ? () => _deleteAccount(context, user.uid) : null),
+                  ]),
                 ),
 
                 const SizedBox(height: 24),
               ]),
+
             );
           },
         ),
