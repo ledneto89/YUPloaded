@@ -240,27 +240,30 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                     ),
                                     child: Padding(
                                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 42, height: 42,
-                                              decoration: BoxDecoration(color: orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                                              child: Center(child: Icon(icon, color: orange, size: 20)),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                                Text(category, style: GoogleFonts.barlow(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
-                                                if (note.isNotEmpty) Text(note, style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
-                                                if (hasReceipt) Text('Receipt saved', style: GoogleFonts.barlow(fontSize: 10, color: success)),
-                                                Text('Swipe left to delete', style: GoogleFonts.barlow(fontSize: 10, color: textMuted)),
-                                              ]),
-                                            ),
-                                            Text('USD ' + amount.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
-                                          ],
+                                      child: GestureDetector(
+                                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditExpensePage(expenseId: doc.id, expenseData: data))),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 42, height: 42,
+                                                decoration: BoxDecoration(color: orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                                                child: Center(child: Icon(icon, color: orange, size: 20)),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                                  Text(category, style: GoogleFonts.barlow(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
+                                                  if (note.isNotEmpty) Text(note, style: GoogleFonts.barlow(fontSize: 11, color: textMuted)),
+                                                  if (hasReceipt) Text('Receipt saved', style: GoogleFonts.barlow(fontSize: 10, color: success)),
+                                                  Text('Tap to edit • Swipe left to delete', style: GoogleFonts.barlow(fontSize: 10, color: textMuted)),
+                                                ]),
+                                              ),
+                                              Text('USD ' + amount.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
