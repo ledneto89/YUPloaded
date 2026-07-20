@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'calendar_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -115,12 +116,14 @@ class _LoadsPageState extends State<LoadsPage> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: border)),
-                              child: Column(
-                                children: [
-                                  const Icon(Icons.folder_open, size: 32, color: Color(0xFFF5921E)),
+                            child: GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendarPage())),
+                              child: Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: border)),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.calendar_month, size: 32, color: Color(0xFFF5921E)),
                                   const SizedBox(height: 10),
                                   Text('PAST LOADS', style: GoogleFonts.barlowCondensed(fontSize: 18, fontWeight: FontWeight.w900, color: textPrimary)),
                                   const SizedBox(height: 4),
