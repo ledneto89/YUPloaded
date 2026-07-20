@@ -199,7 +199,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditLoadPage(loadId: data['id'], data: data))),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditLoadPage(loadId: data['id'], loadData: data))),
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
