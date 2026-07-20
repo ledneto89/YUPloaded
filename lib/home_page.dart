@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'fleet_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -181,6 +182,32 @@ class HomePage extends StatelessWidget {
                             ),
 
                             const SizedBox(height: 10),
+
+                            // FLEET DASHBOARD BUTTON - shows for fleet owners
+                            if (userData['isFleetOwner'] == true)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                                child: GestureDetector(
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FleetPage())),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF122035),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFF5921E), width: 1.5),
+                                    ),
+                                    child: Row(children: [
+                                      const Icon(Icons.local_shipping, color: Color(0xFFF5921E), size: 20),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                        Text('Fleet Dashboard', style: GoogleFonts.barlowCondensed(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                                        Text('Fleet Code: ' + (userData['fleetCode'] ?? ''), style: GoogleFonts.barlow(fontSize: 11, color: const Color(0xFFF5921E))),
+                                      ])),
+                                      const Icon(Icons.chevron_right, color: Color(0xFFF5921E), size: 20),
+                                    ]),
+                                  ),
+                                ),
+                              ),
 
                             // LICENSE UPLOAD BANNER - shows after 10 loads if no license
                             if (totalLoads >= 10 && (userData['licenseUrl'] == null || (userData['licenseUrl'] as String).isEmpty))
