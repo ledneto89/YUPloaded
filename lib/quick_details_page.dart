@@ -186,7 +186,9 @@ class _QuickDetailsPageState extends State<QuickDetailsPage> {
       if (_savedDispatcherEmail.isNotEmpty) await EmailService.sendDispatcherPacket(dispatcherEmail: _savedDispatcherEmail, loadNumber: loadNumber, pickupState: _pickupCity.isNotEmpty ? _pickupCity + ' ' + (_pickupState ?? '') : (_pickupState ?? ''), deliveryState: _deliveryCity.isNotEmpty ? _deliveryCity + ' ' + (_deliveryState ?? '') : (_deliveryState ?? ''), driverName: driverName, rateConUrl: widget.rateConUrl, bolUrl: widget.bolUrl, freightUrls: widget.freightUrls, podUrl: widget.podUrl);
 
       if (mounted) {
-        await InvoiceGenerator.generateAndShare(loadNumber: loadNumber, driverName: driverName, mcNumber: mcNumber, pickupState: _pickupCity.isNotEmpty ? _pickupCity + ' ' + (_pickupState ?? '') : (_pickupState ?? ''), deliveryState: _deliveryCity.isNotEmpty ? _deliveryCity + ' ' + (_deliveryState ?? '') : (_deliveryState ?? ''), rate: rate, brokerEmail: brokerEmail, context: context);
+        if (brokerEmail.isNotEmpty) {
+          await InvoiceGenerator.generateAndShare(loadNumber: loadNumber, driverName: driverName, mcNumber: mcNumber, pickupState: _pickupCity.isNotEmpty ? _pickupCity + ' ' + (_pickupState ?? '') : (_pickupState ?? ''), deliveryState: _deliveryCity.isNotEmpty ? _deliveryCity + ' ' + (_deliveryState ?? '') : (_deliveryState ?? ''), rate: rate, brokerEmail: brokerEmail, context: context);
+        }
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => YUPLOADEDPage(loadNumber: loadNumber)));
       }
     } catch (e) {
@@ -294,6 +296,11 @@ class _QuickDetailsPageState extends State<QuickDetailsPage> {
               const SizedBox(height: 6),
               TextField(controller: _brokerEmailController, keyboardType: TextInputType.emailAddress, style: GoogleFonts.barlow(fontSize: 14, color: textPrimary), decoration: InputDecoration(hintText: 'broker@company.com', hintStyle: GoogleFonts.barlow(fontSize: 13, color: const Color(0xFF3A5070)), filled: true, fillColor: surface, contentPadding: const EdgeInsets.all(14), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1C2E45), width: 1.5)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF5921E), width: 1.5)))),
             ]),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Leave blank to save without sending', style: GoogleFonts.barlow(fontSize: 11, color: const Color(0xFF5A7A9A))),
+            ),
+
             if (_savedDispatcherEmail.isNotEmpty) ...[
               const SizedBox(height: 10),
               Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: orange.withValues(alpha: 0.3))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
